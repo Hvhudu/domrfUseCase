@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ДОМ.РФ - Диаграмма функциональных связей</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica Neue', sans-serif;
+            background: #F5F5F5;
+            padding: 40px 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #E0E0E0;
+        }
+
+        .header h1 {
+            color: #1A1A1A;
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 15px;
+            font-weight: normal;
+        }
+
+        .instructions {
+            background: #FAFAFA;
+            border: 1px solid #E0E0E0;
+            border-left: 4px solid #1976D2;
+            color: #333;
+            padding: 20px 25px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h2 {
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1A1A1A;
+        }
+
+        .instructions p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+        }
+
+        .diagram-wrapper {
+            position: relative;
+            background: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-radius: 4px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .diagram-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            min-height: 700px;
+        }
+
+        .actors-column {
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+            width: 180px;
+        }
+
+        .actor {
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 15px;
+            border-radius: 4px;
+            position: relative;
+            background: #FAFAFA;
+            border: 1px solid #E0E0E0;
+        }
+
+        .actor:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: white;
+        }
+
+        .actor.active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            background: white;
+            border-color: currentColor;
+        }
+
+        .actor-icon {
+            width: 60px;
+            height: 60px;
+            border: 2px solid;
+            border-radius: 4px;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .actor.active .actor-icon {
+            border-width: 3px;
+        }
+
+        .actor-name {
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 1.3;
+            margin-bottom: 6px;
+            color: #1A1A1A;
+        }
+
+        .actor-count {
+            font-size: 11px;
+            color: #888;
+            font-weight: normal;
+        }
+
+        /* Цвета актёров */
+        .actor[data-actor="citizen"] { color: #1976D2; }
+        .actor[data-actor="citizen"] .actor-icon { border-color: #1976D2; }
+        
+        .actor[data-actor="developer"] { color: #F57C00; }
+        .actor[data-actor="developer"] .actor-icon { border-color: #F57C00; }
+        
+        .actor[data-actor="contractor"] { color: #FBC02D; }
+        .actor[data-actor="contractor"] .actor-icon { border-color: #FBC02D; }
+        
+        .actor[data-actor="credit_mgr"] { color: #7B1FA2; }
+        .actor[data-actor="credit_mgr"] .actor-icon { border-color: #7B1FA2; }
+        
+        .actor[data-actor="inspector"] { color: #00897B; }
+        .actor[data-actor="inspector"] .actor-icon { border-color: #00897B; }
+        
+        .actor[data-actor="bank"] { color: #C2185B; }
+        .actor[data-actor="bank"] .actor-icon { border-color: #C2185B; }
+        
+        .actor[data-actor="analyst"] { color: #388E3C; }
+        .actor[data-actor="analyst"] .actor-icon { border-color: #388E3C; }
+
+        .usecases-center {
+            flex: 1;
+            margin: 0 40px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            align-content: start;
+        }
+
+        .usecase {
+            padding: 14px 16px;
+            border-radius: 4px;
+            border: 1px solid #E0E0E0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            line-height: 1.4;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            opacity: 0.3;
+            min-height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #FAFAFA;
+            color: #333;
+        }
+
+        .usecase.active {
+            opacity: 1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-width: 2px;
+            background: white;
+            font-weight: 600;
+        }
+
+        .usecase:hover {
+            opacity: 0.7;
+        }
+
+        .usecase.mortgage { border-color: #1976D2; }
+        .usecase.mortgage.active { color: #1976D2; }
+        
+        .usecase.construction { border-color: #F57C00; }
+        .usecase.construction.active { color: #F57C00; }
+        
+        .usecase.financing { border-color: #7B1FA2; }
+        .usecase.financing.active { color: #7B1FA2; }
+        
+        .usecase.analytics { border-color: #388E3C; }
+        .usecase.analytics.active { color: #388E3C; }
+        
+        .usecase.support { border-color: #C2185B; }
+        .usecase.support.active { color: #C2185B; }
+        
+        .usecase.general { border-color: #616161; }
+        .usecase.general.active { color: #616161; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #FAFAFA;
+            border-radius: 4px;
+            border: 1px solid #E0E0E0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #E0E0E0;
+            background: white;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .legend-item.active {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border-color: currentColor;
+        }
+
+        .legend-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: 2px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            background: white;
+        }
+
+        .stats {
+            background: #1A1A1A;
+            color: white;
+            padding: 30px;
+            border-radius: 4px;
+            margin-top: 30px;
+        }
+
+        .stats h3 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 4px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-item strong {
+            display: block;
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .stat-item span {
+            font-size: 13px;
+            color: #CCC;
+        }
+
+        @media (max-width: 1400px) {
+            .usecases-center {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .diagram-content {
+                flex-direction: column;
+            }
+            .usecases-center {
+                grid-template-columns: 1fr;
+                margin: 20px 0;
+            }
+            .actors-column {
+                flex-direction: row;
+                flex-wrap: wrap;
+                width: 100%;
+                gap: 20px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ДОМ.РФ — Диаграмма функциональных связей</h1>
+            <div class="subtitle">Визуализация взаимодействий между участниками системы и функциональными модулями</div>
+        </div>
+
+        <div class="instructions">
+            <h2>Инструкция по работе с диаграммой</h2>
+            <p>Наведите курсор на участника системы или нажмите на него для отображения связанных функциональных модулей. Линии различных цветов показывают принадлежность функций к конкретным участникам.</p>
+        </div>
+
+        <div class="diagram-wrapper">
+            <canvas id="canvas"></canvas>
+            
+            <div class="diagram-content">
+                <!-- Актёры слева -->
+                <div class="actors-column">
+                    <div class="actor" data-actor="citizen" data-color="#1976D2" data-connections="uc01,uc03,uc05,uc07,uc09,uc12,uc14,uc27,uc30">
+                        <div class="actor-icon">👤</div>
+                        <div class="actor-name">Гражданин</div>
+                        <div class="actor-count">9 функций</div>
+                    </div>
+                    <div class="actor" data-actor="developer" data-color="#F57C00" data-connections="uc11,uc12,uc13,uc15,uc18,uc22">
+                        <div class="actor-icon">🏢</div>
+                        <div class="actor-name">Застройщик</div>
+                        <div class="actor-count">6 функций</div>
+                    </div>
+                    <div class="actor" data-actor="contractor" data-color="#FBC02D" data-connections="uc08,uc10,uc13">
+                        <div class="actor-icon">👷</div>
+                        <div class="actor-name">Подрядчик</div>
+                        <div class="actor-count">3 функции</div>
+                    </div>
+                </div>
+
+                <!-- Use Cases в центре -->
+                <div class="usecases-center">
+                    <div class="usecase mortgage" data-uc="uc01">Подать заявку<br>на ипотеку</div>
+                    <div class="usecase mortgage" data-uc="uc02">Обработать<br>заявку</div>
+                    <div class="usecase mortgage" data-uc="uc03">Оформить<br>страховку</div>
+                    <div class="usecase mortgage" data-uc="uc04">Электронная<br>закладная</div>
+                    <div class="usecase mortgage" data-uc="uc05">Выбрать<br>объект</div>
+                    <div class="usecase mortgage" data-uc="uc06">Проверить<br>историю</div>
+                    <div class="usecase construction" data-uc="uc11">Проектная<br>декларация</div>
+                    <div class="usecase construction" data-uc="uc12">Мониторинг<br>строительства</div>
+                    <div class="usecase construction" data-uc="uc13">Фотоотчеты</div>
+                    <div class="usecase construction" data-uc="uc14">Проверка<br>застройщика</div>
+                    <div class="usecase construction" data-uc="uc15">ТИМ/BIM<br>контроль</div>
+                    <div class="usecase construction" data-uc="uc16">Проверка<br>этапов</div>
+                    <div class="usecase construction" data-uc="uc07">Выбор проекта<br>ИЖС</div>
+                    <div class="usecase construction" data-uc="uc08">Подбор<br>подрядчика</div>
+                    <div class="usecase construction" data-uc="uc09">Ипотека<br>на ИЖС</div>
+                    <div class="usecase construction" data-uc="uc10">Контроль<br>ИЖС</div>
+                    <div class="usecase financing" data-uc="uc17">Открыть<br>эскроу</div>
+                    <div class="usecase financing" data-uc="uc18">Финансирование<br>застройщика</div>
+                    <div class="usecase financing" data-uc="uc19">Управление<br>эскроу</div>
+                    <div class="usecase financing" data-uc="uc20">Оценка<br>рисков</div>
+                    <div class="usecase analytics" data-uc="uc22">Аналитика<br>рынка</div>
+                    <div class="usecase analytics" data-uc="uc23">Отчетность</div>
+                    <div class="usecase analytics" data-uc="uc24">Прогноз<br>спроса</div>
+                    <div class="usecase analytics" data-uc="uc25">KPI<br>мониторинг</div>
+                    <div class="usecase analytics" data-uc="uc26">Статистика<br>продаж</div>
+                    <div class="usecase support" data-uc="uc27">Консультации</div>
+                    <div class="usecase general" data-uc="uc30">Личный<br>кабинет</div>
+                    <div class="usecase general" data-uc="uc34">API</div>
+                </div>
+
+                <!-- Актёры справа -->
+                <div class="actors-column">
+                    <div class="actor" data-actor="credit_mgr" data-color="#7B1FA2" data-connections="uc02,uc06,uc18,uc20">
+                        <div class="actor-icon">💼</div>
+                        <div class="actor-name">Кредитный<br>менеджер</div>
+                        <div class="actor-count">4 функции</div>
+                    </div>
+                    <div class="actor" data-actor="inspector" data-color="#00897B" data-connections="uc12,uc15,uc16">
+                        <div class="actor-icon">🔍</div>
+                        <div class="actor-name">Контролер</div>
+                        <div class="actor-count">3 функции</div>
+                    </div>
+                    <div class="actor" data-actor="bank" data-color="#C2185B" data-connections="uc04,uc17,uc19,uc34">
+                        <div class="actor-icon">🏦</div>
+                        <div class="actor-name">Банк-партнер</div>
+                        <div class="actor-count">4 функции</div>
+                    </div>
+                    <div class="actor" data-actor="analyst" data-color="#388E3C" data-connections="uc22,uc23,uc24,uc25,uc26">
+                        <div class="actor-icon">📈</div>
+                        <div class="actor-name">Аналитик</div>
+                        <div class="actor-count">5 функций</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item" data-actor="citizen">
+                <div class="legend-icon" style="border-color: #1976D2; color: #1976D2;">👤</div>
+                <span style="color: #1976D2;">Гражданин</span>
+            </div>
+            <div class="legend-item" data-actor="developer">
+                <div class="legend-icon" style="border-color: #F57C00; color: #F57C00;">🏢</div>
+                <span style="color: #F57C00;">Застройщик</span>
+            </div>
+            <div class="legend-item" data-actor="contractor">
+                <div class="legend-icon" style="border-color: #FBC02D; color: #FBC02D;">👷</div>
+                <span style="color: #FBC02D;">Подрядчик</span>
+            </div>
+            <div class="legend-item" data-actor="credit_mgr">
+                <div class="legend-icon" style="border-color: #7B1FA2; color: #7B1FA2;">💼</div>
+                <span style="color: #7B1FA2;">Менеджер</span>
+            </div>
+            <div class="legend-item" data-actor="inspector">
+                <div class="legend-icon" style="border-color: #00897B; color: #00897B;">🔍</div>
+                <span style="color: #00897B;">Контролер</span>
+            </div>
+            <div class="legend-item" data-actor="bank">
+                <div class="legend-icon" style="border-color: #C2185B; color: #C2185B;">🏦</div>
+                <span style="color: #C2185B;">Банк</span>
+            </div>
+            <div class="legend-item" data-actor="analyst">
+                <div class="legend-icon" style="border-color: #388E3C; color: #388E3C;">📈</div>
+                <span style="color: #388E3C;">Аналитик</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <h3>Система ДОМ.РФ — Ключевые показатели</h3>
+            <div class="stats-grid">
+                <div class="stat-item"><strong>7</strong><span>Типов участников</span></div>
+                <div class="stat-item"><strong>28</strong><span>Функциональных модулей</span></div>
+                <div class="stat-item"><strong>Миллионы</strong><span>Граждан</span></div>
+                <div class="stat-item"><strong>10К+</strong><span>Застройщиков</span></div>
+                <div class="stat-item"><strong>200+</strong><span>Банков-партнеров</span></div>
+                <div class="stat-item"><strong>65,7 млрд ₽</strong><span>Прибыль 2024</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let currentActor = null;
+        let animationFrame = null;
+
+        function resizeCanvas() {
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.offsetWidth;
+            canvas.height = wrapper.offsetHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function getCenter(element) {
+            const rect = element.getBoundingClientRect();
+            const wrapperRect = canvas.parentElement.getBoundingClientRect();
+            return {
+                x: rect.left + rect.width / 2 - wrapperRect.left,
+                y: rect.top + rect.height / 2 - wrapperRect.top
+            };
+        }
+
+        function drawLine(from, to, color, progress = 1) {
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const currentX = from.x + dx * progress;
+            const currentY = from.y + dy * progress;
+
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Стрелка
+            if (progress === 1) {
+                const angle = Math.atan2(dy, dx);
+                const arrowLength = 12;
+                ctx.beginPath();
+                ctx.moveTo(to.x, to.y);
+                ctx.lineTo(
+                    to.x - arrowLength * Math.cos(angle - Math.PI / 6),
+                    to.y - arrowLength * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.lineTo(
+                    to.x - arrowLength * Math.cos(angle + Math.PI / 6),
+                    to.y - arrowLength * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentActor) {
+                const actor = document.querySelector(`.actor[data-actor="${currentActor}"]`);
+                if (!actor) return;
+
+                const color = actor.dataset.color;
+                const connections = actor.dataset.connections.split(',');
+                const actorPos = getCenter(actor);
+
+                connections.forEach((ucId, index) => {
+                    const uc = document.querySelector(`.usecase[data-uc="${ucId}"]`);
+                    if (!uc) return;
+
+                    const ucPos = getCenter(uc);
+                    const delay = index * 0.08;
+                    const time = (Date.now() / 1000 - delay) % 1.5;
+                    const progress = Math.min(time / 0.4, 1);
+
+                    if (time >= 0) {
+                        drawLine(actorPos, ucPos, color, progress);
+                    }
+                });
+            }
+
+            animationFrame = requestAnimationFrame(animate);
+        }
+
+        function highlightActor(actorId, isPermanent = false) {
+            if (isPermanent && currentActor === actorId) {
+                currentActor = null;
+                resetHighlight();
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+                return;
+            }
+
+            currentActor = actorId;
+            resetHighlight();
+
+            const actor = document.querySelector(`.actor[data-actor="${actorId}"]`);
+            if (!actor) return;
+
+            actor.classList.add('active');
+            const connections = actor.dataset.connections.split(',');
+
+            document.querySelectorAll('.usecase').forEach(uc => {
+                if (connections.includes(uc.dataset.uc)) {
+                    uc.classList.add('active');
+                }
+            });
+
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+            }
+            animate();
+        }
+
+        function resetHighlight() {
+            document.querySelectorAll('.actor').forEach(a => a.classList.remove('active'));
+            document.querySelectorAll('.usecase').forEach(uc => uc.classList.remove('active'));
+            document.querySelectorAll('.legend-item').forEach(item => item.classList.remove('active'));
+        }
+
+        document.querySelectorAll('.actor').forEach(actor => {
+            actor.addEventListener('mouseenter', () => {
+                if (!currentActor) {
+                    highlightActor(actor.dataset.actor);
+                }
+            });
+
+            actor.addEventListener('mouseleave', () => {
+                if (!currentActor) {
+                    if (animationFrame) {
+                        cancelAnimationFrame(animationFrame);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                    resetHighlight();
+                }
+            });
+
+            actor.addEventListener('click', () => {
+                highlightActor(actor.dataset.actor, true);
+            });
+        });
+
+        document.querySelectorAll('.legend-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const actorId = item.dataset.actor;
+                highlightActor(actorId, true);
+                item.classList.add('active');
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.actor') && !e.target.closest('.legend-item')) {
+                currentActor = null;
+                resetHighlight();
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
